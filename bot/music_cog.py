@@ -1,4 +1,7 @@
+from distutils.log import error
+import json
 import discord
+import datetime
 from discord.ext import commands
 
 from youtube_dl import YoutubeDL
@@ -31,8 +34,17 @@ class MusicCog(commands.Cog):
                 ][0]
             except Exception:
                 return False
+        # pretty print and save to json file
+        # print(json.dumps(info, indent=2))
+        with open("song.json", "w") as f:
+            json.dump(info, f, indent=2)
 
-        return {"source": info["formats"][0]["url"], "title": info["title"]}
+        return {
+            "source": info["formats"][0]["url"],
+            "title": info["title"],
+            "weburl": info["webpage_url"],
+            "duration": info["duration"],
+        }
 
     def play_next(self):
         if len(self.music_queue) > 0:
@@ -56,6 +68,7 @@ class MusicCog(commands.Cog):
         if len(self.music_queue) > 0:
             self.is_playing = True
 
+            song = self.music_queue[0][0]
             m_url = self.music_queue[0][0]["source"]
 
             # try to connect to voice channel if you are not already connected
@@ -72,6 +85,27 @@ class MusicCog(commands.Cog):
             # remove the first element as you are currently playing it
             self.music_queue.pop(0)
 
+            embed = discord.Embed(
+                title="Now Playing",
+                url=song["weburl"],
+                description=song["title"],
+                color=discord.Color.blurple(),
+            )
+            # embed.add_field(name="", value=song["title"](song["weburl"]))
+            minutes, seconds = divmod(song["duration"], 60)
+            embed.set_footer(text="Duration [%d:%d]" % (minutes, seconds))
+            await ctx.send(embed=embed)
+            if song["duration"] > 1200:
+                error_embed = discord.Embed(
+                    title="Error: Song is too long",
+                    description="The song you requested is too long. Please request a song that is less than 20 minutes.",
+                    color=discord.Color.red(),
+                )
+                error_embed.set_footer(text="Duration [%d:%d]" % (minutes, seconds))
+                await ctx.send(embed=error_embed)
+                self.is_playing = False
+                return
+
             self.vc.play(
                 discord.FFmpegPCMAudio(m_url, **self.FFMPEG_OPTIONS),
                 after=lambda e: self.play_next(),
@@ -85,20 +119,43 @@ class MusicCog(commands.Cog):
     async def play(self, ctx, *args):
         query = " ".join(args)
         print("Searching for: %s" % query)
+        print("Message: ", ctx.author, ctx.author.status, ctx.author.voice.channel)
         voice_channel = ctx.author.voice.channel
         if voice_channel is None:
             # you need to be connected so that the bot knows where to go
             await ctx.send("Connect to a voice channel!")
         elif self.is_paused:
+            print("resume??")
             self.vc.resume()
         else:
             song = self.search_yt(query)
+            print("Big song: ", song)
             if type(song) == type(True):
-                await ctx.send(
-                    "Could not download the song. Incorrect format try another keyword. This could be due to playlist or a livestream format."
+                print("Wrong song bro")
+                embed = discord.Embed(
+                    title="Could not download the song",
+                    description="Try a different keyword",
+                    color=discord.Color.red(),
                 )
+                await ctx.send(embed=embed)
+                # await ctx.send(
+                #     "Could not download the song. Incorrect format try another keyword. This could be due to playlist or a livestream format."
+                # )
             else:
-                await ctx.send("Song added to the queue")
+                # Get song url
+                print("Yessir")
+                # song_url = "https://www.youtube.com/watch?v=" + song["weburl"]
+                print(song)
+                embed = discord.Embed(
+                    title=song["title"],
+                    url=song["weburl"],
+                    description="Added to queue",
+                    color=discord.Color.green(),
+                )
+                minutes, seconds = divmod(song["duration"], 60)
+                embed.set_footer(text="Duration [%d:%d]" % (minutes, seconds))
+                await ctx.send(embed=embed)
+
                 self.music_queue.append([song, voice_channel])
 
                 if not self.is_playing:
@@ -130,6 +187,7 @@ class MusicCog(commands.Cog):
     async def skip(self, ctx):
         if self.vc is not None and self.vc:
             self.vc.stop()
+            await ctx.send("Skipped")
             # try to play next in the queue if it exists
             await self.play_music(ctx)
 

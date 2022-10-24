@@ -3,9 +3,6 @@ from discord.ext import commands
 import os
 import asyncio
 
-# # import all cogs
-# import help_cog
-# import music_cog
 
 bot = commands.Bot(command_prefix="!", intents=discord.Intents.all(), help_command=None)
 
