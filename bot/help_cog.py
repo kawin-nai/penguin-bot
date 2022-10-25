@@ -19,11 +19,45 @@ General commands:
 !resume - resumes playing the current song
 ```
 """
-        self.help_embed = discord.Embed(title="Commands", color=discord.Color.green())
+        self.help_embed = discord.Embed(
+            title="Commands",
+            description="Please make sure you're connected to a voice channel before typing!",
+            color=discord.Color.green(),
+        )
         self.help_embed.add_field(
             name="!p [keyword]",
-            value="Find the song on youtube and plays it in your current channel. Will resume playing the current song if it was paused",
-            inline=True,
+            value="Finds the song on youtube and plays it in your current channel.",
+            inline=False,
+        )
+        self.help_embed.add_field(
+            name="!skip, !s",
+            value="Skips the current song",
+            inline=False,
+        )
+        self.help_embed.add_field(
+            name="!queue, !q",
+            value="Displays the current music queue",
+            inline=False,
+        )
+        self.help_embed.add_field(
+            name="!clear",
+            value="Stops the music and clears the queue",
+            inline=False,
+        )
+        self.help_embed.add_field(
+            name="!leave, !d",
+            value="Disconnects the bot from the voice channel",
+            inline=False,
+        )
+        self.help_embed.add_field(
+            name="!pause",
+            value="Pauses or resumes the current song",
+            inline=False,
+        )
+        self.help_embed.add_field(
+            name="!help",
+            value="Displays this message",
+            inline=False,
         )
         self.text_channel_list = []
 

@@ -3,6 +3,7 @@ import json
 import discord
 import datetime
 from discord.ext import commands
+import asyncio
 
 from youtube_dl import YoutubeDL
 
@@ -24,6 +25,7 @@ class MusicCog(commands.Cog):
         }
 
         self.vc = None
+        self.cursong = None
 
     # searching the item on youtube
     def search_yt(self, item):
@@ -38,12 +40,13 @@ class MusicCog(commands.Cog):
         # print(json.dumps(info, indent=2))
         with open("song.json", "w") as f:
             json.dump(info, f, indent=2)
-
+        duration = str(datetime.timedelta(seconds=info["duration"]))
         return {
             "source": info["formats"][0]["url"],
             "title": info["title"],
             "weburl": info["webpage_url"],
-            "duration": info["duration"],
+            "duration": duration,
+            "raw_duration": info["duration"],
         }
 
     def play_next(self):
@@ -51,10 +54,26 @@ class MusicCog(commands.Cog):
             self.is_playing = True
 
             # get the first url
+            song = self.music_queue[0][0]
             m_url = self.music_queue[0][0]["source"]
-
+            self.cursong = song
             # remove the first element as you are currently playing it
             self.music_queue.pop(0)
+
+            # embed = discord.Embed(
+            #     title="Play Next",
+            #     url=song["weburl"],
+            #     description=song["title"],
+            #     color=discord.Color.blurple(),
+            # )
+            # # minutes, seconds = divmod(song["duration"], 60)
+            # embed.set_footer(text="Duration [%s]" % song["duration"])
+            # coro = ctx.send(embed=embed)
+            # fut = asyncio.run_coroutine_threadsafe(coro, self.bot.loop)
+            # try:
+            #     fut.result()
+            # except:
+            #     pass
 
             self.vc.play(
                 discord.FFmpegPCMAudio(m_url, **self.FFMPEG_OPTIONS),
@@ -70,6 +89,7 @@ class MusicCog(commands.Cog):
 
             song = self.music_queue[0][0]
             m_url = self.music_queue[0][0]["source"]
+            self.cursong = song
 
             # try to connect to voice channel if you are not already connected
             if self.vc is None or not self.vc.is_connected():
@@ -85,6 +105,7 @@ class MusicCog(commands.Cog):
             # remove the first element as you are currently playing it
             self.music_queue.pop(0)
 
+            print("In play_music, building embed")
             embed = discord.Embed(
                 title="Now Playing",
                 url=song["weburl"],
@@ -92,16 +113,17 @@ class MusicCog(commands.Cog):
                 color=discord.Color.blurple(),
             )
             # embed.add_field(name="", value=song["title"](song["weburl"]))
-            minutes, seconds = divmod(song["duration"], 60)
-            embed.set_footer(text="Duration [%d:%d]" % (minutes, seconds))
+            # minutes, seconds = divmod(song["duration"], 60)
+            embed.set_footer(text="Duration [%s]" % song["duration"])
             await ctx.send(embed=embed)
-            if song["duration"] > 1200:
+            print("In play_music, embed sent")
+            if song["raw_duration"] > 1200:
                 error_embed = discord.Embed(
                     title="Error: Song is too long",
                     description="The song you requested is too long. Please request a song that is less than 20 minutes.",
                     color=discord.Color.red(),
                 )
-                error_embed.set_footer(text="Duration [%d:%d]" % (minutes, seconds))
+                error_embed.set_footer(text="Duration [%s]" % song["duration"])
                 await ctx.send(embed=error_embed)
                 self.is_playing = False
                 return
@@ -119,11 +141,14 @@ class MusicCog(commands.Cog):
     async def play(self, ctx, *args):
         query = " ".join(args)
         print("Searching for: %s" % query)
-        print("Message: ", ctx.author, ctx.author.status, ctx.author.voice.channel)
+        # print("Message: ", ctx.author, ctx.author.status, ctx.author.voice.channel)
         voice_channel = ctx.author.voice.channel
+        print("No voice", voice_channel)
         if voice_channel is None:
             # you need to be connected so that the bot knows where to go
+            print("No voice")
             await ctx.send("Connect to a voice channel!")
+            return
         elif self.is_paused:
             print("resume??")
             self.vc.resume()
@@ -152,8 +177,8 @@ class MusicCog(commands.Cog):
                     description="Added to queue",
                     color=discord.Color.green(),
                 )
-                minutes, seconds = divmod(song["duration"], 60)
-                embed.set_footer(text="Duration [%d:%d]" % (minutes, seconds))
+                # minutes, seconds = divmod(song["duration"], 60)
+                embed.set_footer(text="Duration [%s]" % song["duration"])
                 await ctx.send(embed=embed)
 
                 self.music_queue.append([song, voice_channel])
@@ -187,25 +212,57 @@ class MusicCog(commands.Cog):
     async def skip(self, ctx):
         if self.vc is not None and self.vc:
             self.vc.stop()
-            await ctx.send("Skipped")
+            embed = discord.Embed(
+                title="Skipped",
+                color=discord.Color.blue(),
+            )
+            await ctx.send(embed=embed)
             # try to play next in the queue if it exists
             await self.play_music(ctx)
 
     @commands.command(
-        name="queue", aliases=["q"], help="Displays the current songs in queue"
+        name="queue", aliases=["q", "list"], help="Displays the current songs in queue"
     )
     async def queue(self, ctx):
         retval = ""
+        if self.cursong is None:
+            await ctx.send(
+                embed=discord.Embed(
+                    title="Queue is empty",
+                    color=discord.Color.red(),
+                )
+            )
+            return
+        embed = discord.Embed(
+            title="Queue",
+            description="Current songs in queue",
+            color=discord.Color.green(),
+        )
+        embed.add_field(
+            name="Playing - " + self.cursong["title"],
+            value="Duration [%s]" % self.cursong["duration"],
+            inline=False,
+        )
         for i in range(0, len(self.music_queue)):
             # display a max of 5 songs in the current queue
             if i > 4:
                 break
             retval += self.music_queue[i][0]["title"] + "\n"
-
-        if retval != "":
-            await ctx.send(retval)
-        else:
-            await ctx.send("No music in queue")
+            embed.add_field(
+                name=str(i + 1) + ". " + self.music_queue[i][0]["title"],
+                value="Duration [%s]" % self.music_queue[i][0]["duration"],
+                inline=False,
+            )
+        await ctx.send(embed=embed)
+        # if retval != "":
+        #     await ctx.send(embed=embed)
+        # else:
+        #     await ctx.send(
+        #         embed=discord.Embed(
+        #             title="Queue is empty",
+        #             color=discord.Color.red(),
+        #         )
+        #     )
 
     @commands.command(
         name="clear", aliases=["c", "bin"], help="Stops the music and clears the queue"
