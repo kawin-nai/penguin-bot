@@ -57,6 +57,7 @@ class MusicCog(commands.Cog):
             song = self.music_queue[0][0]
             m_url = self.music_queue[0][0]["source"]
             self.cursong = song
+            print("Cursong in play_next: ", self.cursong["title"])
             # remove the first element as you are currently playing it
             self.music_queue.pop(0)
 
@@ -76,7 +77,7 @@ class MusicCog(commands.Cog):
             #     pass
 
             self.vc.play(
-                discord.FFmpegPCMAudio(m_url, **self.FFMPEG_OPTIONS),
+                discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(m_url, **self.FFMPEG_OPTIONS), 0.7),
                 after=lambda e: self.play_next(),
             )
         else:
@@ -90,6 +91,7 @@ class MusicCog(commands.Cog):
             song = self.music_queue[0][0]
             m_url = self.music_queue[0][0]["source"]
             self.cursong = song
+            print("Cursong in play_music: ", self.cursong["title"])
 
             # try to connect to voice channel if you are not already connected
             if self.vc is None or not self.vc.is_connected():
@@ -105,6 +107,17 @@ class MusicCog(commands.Cog):
             # remove the first element as you are currently playing it
             self.music_queue.pop(0)
 
+            if song["raw_duration"] > 1200:
+                error_embed = discord.Embed(
+                    title="Error: Song is too long",
+                    description="The song you requested is too long. Please request a song that is less than 20 minutes.",
+                    color=discord.Color.red(),
+                )
+                error_embed.set_footer(text="Duration [%s]" % song["duration"])
+                await ctx.send(embed=error_embed)
+                self.is_playing = False
+                return
+
             print("In play_music, building embed")
             embed = discord.Embed(
                 title="Now Playing",
@@ -117,19 +130,9 @@ class MusicCog(commands.Cog):
             embed.set_footer(text="Duration [%s]" % song["duration"])
             await ctx.send(embed=embed)
             print("In play_music, embed sent")
-            if song["raw_duration"] > 1200:
-                error_embed = discord.Embed(
-                    title="Error: Song is too long",
-                    description="The song you requested is too long. Please request a song that is less than 20 minutes.",
-                    color=discord.Color.red(),
-                )
-                error_embed.set_footer(text="Duration [%s]" % song["duration"])
-                await ctx.send(embed=error_embed)
-                self.is_playing = False
-                return
 
             self.vc.play(
-                discord.FFmpegPCMAudio(m_url, **self.FFMPEG_OPTIONS),
+                discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(m_url, **self.FFMPEG_OPTIONS), 0.7),
                 after=lambda e: self.play_next(),
             )
         else:
@@ -154,7 +157,7 @@ class MusicCog(commands.Cog):
             self.vc.resume()
         else:
             song = self.search_yt(query)
-            print("Big song: ", song)
+            # print("Big song: ", song)
             if type(song) == type(True):
                 print("Wrong song bro")
                 embed = discord.Embed(
@@ -168,9 +171,9 @@ class MusicCog(commands.Cog):
                 # )
             else:
                 # Get song url
-                print("Yessir")
+                print("Successfully enter the !p command")
                 # song_url = "https://www.youtube.com/watch?v=" + song["weburl"]
-                print(song)
+                # print(song)
                 embed = discord.Embed(
                     title=song["title"],
                     url=song["weburl"],
@@ -211,6 +214,8 @@ class MusicCog(commands.Cog):
     )
     async def skip(self, ctx):
         if self.vc is not None and self.vc:
+            print("Skipping song")
+            print("Cursong in skip: ", self.cursong["title"])
             self.vc.stop()
             embed = discord.Embed(
                 title="Skipped",
@@ -218,7 +223,7 @@ class MusicCog(commands.Cog):
             )
             await ctx.send(embed=embed)
             # try to play next in the queue if it exists
-            await self.play_music(ctx)
+            # await self.play_music(ctx)
 
     @commands.command(
         name="queue", aliases=["q", "list"], help="Displays the current songs in queue"
