@@ -12,6 +12,7 @@ async def main():
     # load extensions
     await bot.load_extension("help_cog")
     await bot.load_extension("music_cog")
+    # await bot.load_extension("spotify_cog")
 
     # start the bot with our token
     await bot.start(os.getenv("TOKEN"))
@@ -19,5 +20,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-
-

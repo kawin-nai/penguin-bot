@@ -1,4 +1,3 @@
-from distutils.log import error
 import json
 import discord
 import datetime
@@ -8,7 +7,7 @@ import asyncio
 from youtube_dl import YoutubeDL
 
 
-class MusicCog(commands.Cog):
+class SpotifyCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
@@ -18,36 +17,13 @@ class MusicCog(commands.Cog):
 
         # 2d array containing [song, channel]
         self.music_queue = []
-        self.YDL_OPTIONS = {"format": "bestaudio", "noplaylist": "True"}
         self.FFMPEG_OPTIONS = {
             "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
             "options": "-vn",
         }
 
         self.vc = None
-        self.cursong = None
 
-    # searching the item on youtube
-    def search_yt(self, item):
-        with YoutubeDL(self.YDL_OPTIONS) as ydl:
-            try:
-                info = ydl.extract_info("ytsearch:%s" % item, download=False)[
-                    "entries"
-                ][0]
-            except Exception:
-                return False
-        # pretty print and save to json file
-        # print(json.dumps(info, indent=2))
-        with open("song.json", "w") as f:
-            json.dump(info, f, indent=2)
-        duration = str(datetime.timedelta(seconds=info["duration"]))
-        return {
-            "source": info["formats"][0]["url"],
-            "title": info["title"],
-            "weburl": info["webpage_url"],
-            "duration": duration,
-            "raw_duration": info["duration"],
-        }
 
     def play_next(self, ctx):
         if len(self.music_queue) > 0:
@@ -141,9 +117,9 @@ class MusicCog(commands.Cog):
             self.is_playing = False
 
     @commands.command(
-        name="play", aliases=["p", "playing"], help="Plays a selected song from youtube"
+        name="play_spotify", aliases=["ps"], help="Plays a selected song from Spotify"
     )
-    async def play(self, ctx, *args):
+    async def play_spotify(self, ctx, *args):
         query = " ".join(args)
         print("Searching for: %s" % query)
         # print("Message: ", ctx.author, ctx.author.status, ctx.author.voice.channel)
@@ -158,63 +134,26 @@ class MusicCog(commands.Cog):
             print("resume??")
             self.vc.resume()
         else:
-            song = self.search_yt(query)
-            # print("Big song: ", song)
-            if type(song) == type(True):
-                print("Wrong song bro")
-                embed = discord.Embed(
-                    title="Could not download the song",
-                    description="Try a different keyword",
-                    color=discord.Color.red(),
-                )
-                await ctx.send(embed=embed)
-                # await ctx.send(
-                #     "Could not download the song. Incorrect format try another keyword. This could be due to playlist or a livestream format."
-                # )
-            else:
-                # Get song url
-                print("Successfully enter the !p command")
-                # song_url = "https://www.youtube.com/watch?v=" + song["weburl"]
-                # print(song)
-                embed = discord.Embed(
-                    title=song["title"],
-                    url=song["weburl"],
-                    description="Added to queue",
-                    color=discord.Color.green(),
-                )
-                # minutes, seconds = divmod(song["duration"], 60)
-                embed.set_footer(text="Duration [%s]" % song["duration"])
-                await ctx.send(embed=embed)
-
-                self.music_queue.append([song, voice_channel])
-
-                if not self.is_playing:
-                    await self.play_music(ctx)
-
-    @commands.command(name="pause", help="Pauses the current song being played")
-    async def pause(self, ctx, *args):
-        if self.is_playing:
-            self.is_playing = False
-            self.is_paused = True
-            self.vc.pause()
-        elif self.is_paused:
-            self.is_paused = False
             self.is_playing = True
-            self.vc.resume()
+            # Get song url
+            print("Successfully enter the !p command")
+            # song_url = "https://www.youtube.com/watch?v=" + song["weburl"]
+            # print(song)
+            embed = discord.Embed(
+                title="Test",
+                description="Added to queue",
+                color=discord.Color.green(),
+            )
+
+            self.vc.play(
+                discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(m_url, **self.FFMPEG_OPTIONS), 0.7),
+            )
+
 
     @commands.command(
-        name="resume", aliases=["r"], help="Resumes playing with the discord bot"
+        name="skip_spotify", aliases=["ss"], help="Skips the current song being played"
     )
-    async def resume(self, ctx, *args):
-        if self.is_paused:
-            self.is_paused = False
-            self.is_playing = True
-            self.vc.resume()
-
-    @commands.command(
-        name="skip", aliases=["s"], help="Skips the current song being played"
-    )
-    async def skip(self, ctx):
+    async def skip_spotify(self, ctx):
         if self.vc is not None and self.vc:
             print("Skipping song")
             print("Cursong in skip: ", self.cursong["title"])
@@ -228,9 +167,9 @@ class MusicCog(commands.Cog):
             # await self.play_music(ctx)
 
     @commands.command(
-        name="queue", aliases=["q", "list"], help="Displays the current songs in queue"
+        name="queue_spotify", aliases=["qs"], help="Displays the current songs in queue"
     )
-    async def queue(self, ctx):
+    async def queue_spotify(self, ctx):
         retval = ""
         if self.cursong is None:
             await ctx.send(
@@ -261,33 +200,6 @@ class MusicCog(commands.Cog):
                 inline=False,
             )
         await ctx.send(embed=embed)
-        # if retval != "":
-        #     await ctx.send(embed=embed)
-        # else:
-        #     await ctx.send(
-        #         embed=discord.Embed(
-        #             title="Queue is empty",
-        #             color=discord.Color.red(),
-        #         )
-        #     )
-
-    @commands.command(
-        name="clear", aliases=["c", "bin"], help="Stops the music and clears the queue"
-    )
-    async def clear(self, ctx):
-        if self.vc is not None and self.is_playing:
-            self.vc.stop()
-        self.music_queue = []
-        await ctx.send("Music queue cleared")
-
-    @commands.command(
-        name="leave", aliases=["disconnect", "l", "d"], help="Kick the bot from VC"
-    )
-    async def dc(self, ctx):
-        self.is_playing = False
-        self.is_paused = False
-        await self.vc.disconnect()
-
 
 async def setup(bot):
-    await bot.add_cog(MusicCog(bot))
+    await bot.add_cog(SpotifyCog(bot))
