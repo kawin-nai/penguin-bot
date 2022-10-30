@@ -3,6 +3,7 @@ import datetime
 from discord.ext import commands
 import asyncio
 import cred
+import random
 
 from youtube_dl import YoutubeDL
 from spotipy import Spotify, SpotifyOAuth
@@ -178,6 +179,7 @@ class MusicCog(commands.Cog):
                 print("Spotify")
                 # get the song list from spotify playlist
                 songs = self.get_songs_from_spotify(query)
+                random.shuffle(songs)
                 playlist_detail = self.spotify.playlist(query)
 
                 for i, song in enumerate(songs):
@@ -233,7 +235,7 @@ class MusicCog(commands.Cog):
                     await self.play_music(ctx)
 
     @commands.command(name="pause", help="Pauses the current song being played")
-    async def pause(self, ctx, *args):
+    async def pause(self, ctx):
         if self.is_playing:
             self.is_playing = False
             self.is_paused = True
@@ -246,7 +248,7 @@ class MusicCog(commands.Cog):
     @commands.command(
         name="resume", aliases=["r"], help="Resumes playing with the discord bot"
     )
-    async def resume(self, ctx, *args):
+    async def resume(self, ctx):
         if self.is_paused:
             self.is_paused = False
             self.is_playing = True
@@ -265,8 +267,52 @@ class MusicCog(commands.Cog):
                 color=discord.Color.blue(),
             )
             await ctx.send(embed=embed)
-            # try to play next in the queue if it exists
-            # await self.play_music(ctx)
+
+    @commands.command(
+        name="switch_to", aliases=["sw"], help="Skip the current song and switch to a different song in the queue"
+    )
+    async def switch_to(self, ctx, *args):
+        if self.vc is not None and self.vc:
+            song_no = int(args[0])
+            if song_no > len(self.music_queue):
+                embed = discord.Embed(
+                    title="Song number is out of range",
+                    color=discord.Color.red(),
+                )
+                await ctx.send(embed=embed)
+                return
+            print("Switching song")
+            # Rearrange music queue
+            self.music_queue.insert(0, self.music_queue.pop(song_no - 1))
+            self.vc.stop()
+            embed = discord.Embed(
+                title="Switch to song #%d" % song_no,
+                color=discord.Color.blue(),
+            )
+            await ctx.send(embed=embed)
+
+    @commands.command(
+        name="shuffle", aliases=["sh"], help="Shuffle the music queue"
+    )
+    async def shuffle(self, ctx):
+        if self.vc is not None and self.vc:
+            if len(self.music_queue) <= 1:
+                embed = discord.Embed(
+                    title="Not enough songs in the queue",
+                    color=discord.Color.red(),
+                )
+                await ctx.send(embed=embed)
+                return
+            print("Shuffling song")
+            # Shuffle music queue
+            random.shuffle(self.music_queue)
+
+            embed = discord.Embed(
+                title="Shuffled",
+                color=discord.Color.blue(),
+            )
+            await ctx.send(embed=embed)
+            await self.queue(ctx)
 
     @commands.command(
         name="queue", aliases=["q", "list"], help="Displays the top 8 songs in queue"
@@ -291,15 +337,15 @@ class MusicCog(commands.Cog):
             inline=False,
         )
         for i in range(0, len(self.music_queue)):
-            # display a max of 8 songs in the current queue
-            if i > 7:
+            # display a max of 6 songs in the current queue
+            if i > 5:
                 break
             embed.add_field(
                 name=str(i + 1) + ". " + self.music_queue[i][0]["title"],
                 value="Duration [%s]" % self.music_queue[i][0]["duration"],
                 inline=False,
             )
-        if len(self.music_queue) > 8:
+        if len(self.music_queue) > 6:
             embed.add_field(name="...", value="...", inline=False)
         embed.set_footer(text="Total songs in queue: %d" % len(self.music_queue))
         await ctx.send(embed=embed)
@@ -350,6 +396,7 @@ class MusicCog(commands.Cog):
     async def dc(self, ctx):
         self.is_playing = False
         self.is_paused = False
+        await self.clear(ctx)
         await self.vc.disconnect()
 
 

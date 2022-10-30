@@ -25,8 +25,8 @@ General commands:
             color=discord.Color.green(),
         )
         self.help_embed.add_field(
-            name="!p [keyword]",
-            value="Finds the song on youtube and plays it in your current channel.",
+            name="!p [keyword, spotify playlist link]",
+            value="Finds the song on youtube or spotify playlist and plays it in your current channel.",
             inline=False,
         )
         self.help_embed.add_field(
@@ -35,7 +35,22 @@ General commands:
             inline=False,
         )
         self.help_embed.add_field(
+            name="!sw [song_no]",
+            value="Skips to the song number in the queue",
+            inline=False,
+        )
+        self.help_embed.add_field(
+            name="!sh",
+            value="Shuffles the music queue",
+            inline=False,
+        )
+        self.help_embed.add_field(
             name="!queue, !q",
+            value="Displays the top six songs in the music queue",
+            inline=False,
+        )
+        self.help_embed.add_field(
+            name="!queue_all, !qa",
             value="Displays the current music queue",
             inline=False,
         )
@@ -68,22 +83,31 @@ General commands:
                 self.text_channel_list.append(channel)
         print("Bot is ready")
         # print(self.text_channel_list)
-        # await self.send_to_all(self.help_message)
+        # await self.help_to_all()
 
     @commands.command(name="help", help="Displays all available commands")
     async def help(self, ctx):
         print("Sending help message")
         await ctx.send(embed=self.help_embed)
 
-    async def send_to_all(self, message):
-        print("Sending message to all channels")
+    async def help_to_all(self):
+        print("Sending help message to all general channels")
         for channel in self.text_channel_list:
-            await channel.send(embed=self.help_embed)
+            if channel.name == "general":
+                await channel.send(embed=self.help_embed)
 
     @commands.command(name="test", help="Test command")
     async def test(self, ctx):
         print("Sending test message")
         await ctx.send("Test message")
+
+    @commands.command(name="send_message", aliases=["m"], help="Messages to all channels")
+    async def send_message(self, ctx, *args):
+        message = " ".join(args)
+        # print(message)
+        for channel in self.text_channel_list:
+            if channel.name == "general":
+                await channel.send(message)
 
 
 async def setup(bot):
