@@ -1,16 +1,18 @@
-from distutils.log import error
-import json
 import discord
 import datetime
 from discord.ext import commands
 import asyncio
+import cred
 
 from youtube_dl import YoutubeDL
-# from yt_dlp import YoutubeDL
+from spotipy import Spotify, SpotifyOAuth
+
 
 class MusicCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.spotify = Spotify(auth_manager=SpotifyOAuth(client_id=cred.client_id, client_secret=cred.client_secret,
+                                                         redirect_uri=cred.redirect_uri, scope=cred.scope))
 
         # all the music related stuff
         self.is_playing = False
@@ -27,19 +29,22 @@ class MusicCog(commands.Cog):
         self.vc = None
         self.cursong = None
 
-    # searching the item on youtube
+    # Search the song on youtube and return the url
     def search_yt(self, item):
         with YoutubeDL(self.YDL_OPTIONS) as ydl:
             try:
-                info = ydl.extract_info("ytsearch:%s" % item, download=False)[
-                    "entries"
-                ][0]
-            except Exception:
-                return False
+                info = ydl.extract_info("ytsearch: %s" % item, download=False)
+                if "entries" in info:
+                    info = info["entries"][0]
+                # print("Info: ", info)
+            except Exception as e:
+                print(e)
+                return None
+
         # pretty print and save to json file
         # print(json.dumps(info, indent=2))
-        with open("song.json", "w") as f:
-            json.dump(info, f, indent=2)
+        # with open("song.json", "w") as f:
+        #     json.dump(info, f, indent=2)
         duration = str(datetime.timedelta(seconds=info["duration"]))
         return {
             "source": info["formats"][0]["url"],
@@ -48,6 +53,22 @@ class MusicCog(commands.Cog):
             "duration": duration,
             "raw_duration": info["duration"],
         }
+
+    def get_songs_from_spotify(self, playlist_id):
+        try:
+            results = self.spotify.playlist_items(playlist_id)
+            songs = results["items"]
+            while results["next"]:
+                results = self.spotify.next(results)
+                songs.extend(results["items"])
+            # Print the first 20 songs in the playlist
+            for i, item in enumerate(songs):
+                track = item["track"]
+                print("   %d %32.32s %s" % (i, track["artists"][0]["name"], track["name"]))
+            return songs
+        except Exception as e:
+            print(e)
+            return None
 
     def play_next(self, ctx):
         if len(self.music_queue) > 0:
@@ -154,38 +175,65 @@ class MusicCog(commands.Cog):
             await ctx.send("Connect to a voice channel!")
             return
         elif self.is_paused:
-            print("resume??")
+            print("Resume")
             self.vc.resume()
         else:
-            song = self.search_yt(query)
-            # print("Big song: ", song)
-            if type(song) == type(True):
-                print("Wrong song bro")
+            if "spotify" in query:
+                print("Spotify")
+                # get the song list from spotify playlist
+                songs = self.get_songs_from_spotify(query)
+                playlist_detail = self.spotify.playlist(query)
+                # print(songs)
+                print(playlist_detail)
+                for i, song in enumerate(songs):
+                    track = song["track"]
+                    artist = track["artists"][0]["name"]
+                    title = track["name"]
+                    # print("Track: ", track)
+                    song_result = self.search_yt("%s %s audio" % (artist, title))
+                    self.music_queue.append([song_result, voice_channel])
+                    if i == 0 and not self.is_playing:
+                        await self.play_music(ctx)
+
                 embed = discord.Embed(
-                    title="Could not download the song",
-                    description="Try a different keyword",
-                    color=discord.Color.red(),
-                )
-                await ctx.send(embed=embed)
-                # await ctx.send(
-                #     "Could not download the song. Incorrect format try another keyword. This could be due to playlist or a livestream format."
-                # )
-            else:
-                # Get song url
-                print("Successfully enter the !p command")
-                # song_url = "https://www.youtube.com/watch?v=" + song["weburl"]
-                # print(song)
-                embed = discord.Embed(
-                    title=song["title"],
-                    url=song["weburl"],
-                    description="Added to queue",
+                    title="Playlist",
+                    url=query,
+                    description="Added a spotify playlist to queue",
                     color=discord.Color.green(),
                 )
                 # minutes, seconds = divmod(song["duration"], 60)
-                embed.set_footer(text="Duration [%s]" % song["duration"])
+                embed.set_footer(text="Playlist items: %d" % len(songs))
                 await ctx.send(embed=embed)
+                await self.queue(ctx)
+                # for items in self.music_queue:
+                #     print(items[0]["title"])
+            else:
+                song = self.search_yt(query)
+                # print("Big song: ", song)
+                if type(song) == type(True):
+                    print("Wrong song bro")
+                    embed = discord.Embed(
+                        title="Could not download the song",
+                        description="Try a different keyword",
+                        color=discord.Color.red(),
+                    )
+                    await ctx.send(embed=embed)
 
-                self.music_queue.append([song, voice_channel])
+                else:
+                    # Get song url
+                    print("Successfully enter the !p command")
+
+                    embed = discord.Embed(
+                        title=song["title"],
+                        url=song["weburl"],
+                        description="Added to queue",
+                        color=discord.Color.green(),
+                    )
+                    # minutes, seconds = divmod(song["duration"], 60)
+                    embed.set_footer(text="Duration [%s]" % song["duration"])
+                    await ctx.send(embed=embed)
+
+                    self.music_queue.append([song, voice_channel])
 
                 if not self.is_playing:
                     await self.play_music(ctx)
@@ -227,10 +275,9 @@ class MusicCog(commands.Cog):
             # await self.play_music(ctx)
 
     @commands.command(
-        name="queue", aliases=["q", "list"], help="Displays the current songs in queue"
+        name="queue", aliases=["q", "list"], help="Displays the top 8 songs in queue"
     )
     async def queue(self, ctx):
-        retval = ""
         if self.cursong is None:
             await ctx.send(
                 embed=discord.Embed(
@@ -250,25 +297,49 @@ class MusicCog(commands.Cog):
             inline=False,
         )
         for i in range(0, len(self.music_queue)):
-            # display a max of 5 songs in the current queue
-            if i > 4:
+            # display a max of 8 songs in the current queue
+            if i > 7:
                 break
-            retval += self.music_queue[i][0]["title"] + "\n"
             embed.add_field(
                 name=str(i + 1) + ". " + self.music_queue[i][0]["title"],
                 value="Duration [%s]" % self.music_queue[i][0]["duration"],
                 inline=False,
             )
+        if len(self.music_queue) > 8:
+            embed.add_field(name="...", value="...", inline=False)
+        embed.set_footer(text="Total songs in queue: %d" % len(self.music_queue))
         await ctx.send(embed=embed)
-        # if retval != "":
-        #     await ctx.send(embed=embed)
-        # else:
-        #     await ctx.send(
-        #         embed=discord.Embed(
-        #             title="Queue is empty",
-        #             color=discord.Color.red(),
-        #         )
-        #     )
+
+    @commands.command(
+        name="queue_all", aliases=["qa", "listall"], help="Displays all songs in queue"
+    )
+    async def queue_all(self, ctx):
+        if self.cursong is None:
+            await ctx.send(
+                embed=discord.Embed(
+                    title="Queue is empty",
+                    color=discord.Color.red(),
+                )
+            )
+            return
+        embed = discord.Embed(
+            title="Queue",
+            description="Current songs in queue",
+            color=discord.Color.green(),
+        )
+        embed.add_field(
+            name="Playing - " + self.cursong["title"],
+            value="Duration [%s]" % self.cursong["duration"],
+            inline=False,
+        )
+        for i in range(0, len(self.music_queue)):
+            embed.add_field(
+                name=str(i + 1) + ". " + self.music_queue[i][0]["title"],
+                value="Duration [%s]" % self.music_queue[i][0]["duration"],
+                inline=False,
+            )
+        embed.set_footer(text="Total songs in queue: %d" % len(self.music_queue))
+        await ctx.send(embed=embed)
 
     @commands.command(
         name="clear", aliases=["c", "bin"], help="Stops the music and clears the queue"
