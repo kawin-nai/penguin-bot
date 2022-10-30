@@ -2,6 +2,7 @@ import json
 import discord
 import datetime
 from discord.ext import commands
+from spotdl import Spotdl
 import asyncio
 
 from youtube_dl import YoutubeDL
@@ -23,8 +24,23 @@ class SpotifyCog(commands.Cog):
         }
 
         self.vc = None
+        self.spotdlClient = Spotdl(client_id="f916ba5f559b4b47b25710ac04b31b9a", client_secret="868da81e469b4aa49adeacf464acbbc5")
 
+    def search_spotify(self, item):
+        # search for the song
+        try:
+            results = self.spotdlClient.search([item])
+            fut = asyncio.run_coroutine_threadsafe(self.spotdlClient.download_songs(results), self.bot.loop)
+            try:
+                fut.result()
+            except Exception as e:
+                print(e)
+                return None
 
+            return fut.result()
+        except Exception as e:
+            print(e)
+            return False
     def play_next(self, ctx):
         if len(self.music_queue) > 0:
             self.is_playing = True
@@ -139,15 +155,17 @@ class SpotifyCog(commands.Cog):
             print("Successfully enter the !p command")
             # song_url = "https://www.youtube.com/watch?v=" + song["weburl"]
             # print(song)
+            song = self.search_spotify(query)
+            print(song)
             embed = discord.Embed(
                 title="Test",
                 description="Added to queue",
                 color=discord.Color.green(),
             )
 
-            self.vc.play(
-                discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(m_url, **self.FFMPEG_OPTIONS), 0.7),
-            )
+            # self.vc.play(
+            #     discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(m_url, **self.FFMPEG_OPTIONS), 0.7),
+            # )
 
 
     @commands.command(

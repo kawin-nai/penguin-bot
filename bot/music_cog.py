@@ -6,7 +6,7 @@ from discord.ext import commands
 import asyncio
 
 from youtube_dl import YoutubeDL
-
+# from yt_dlp import YoutubeDL
 
 class MusicCog(commands.Cog):
     def __init__(self, bot):
@@ -55,7 +55,6 @@ class MusicCog(commands.Cog):
 
             # get the first url
             song = self.music_queue[0][0]
-            voice_channel = self.music_queue[0][1]
             m_url = self.music_queue[0][0]["source"]
             self.cursong = song
             print("Cursong in play_next: ", self.cursong["title"])
@@ -71,7 +70,7 @@ class MusicCog(commands.Cog):
             # minutes, seconds = divmod(song["duration"], 60)
             embed.set_footer(text="Duration [%s]" % song["duration"])
 
-            coro = ctx.send(embed = embed)
+            coro = ctx.send(embed=embed)
             fut = asyncio.run_coroutine_threadsafe(coro, self.bot.loop)
             try:
                 fut.result()
