@@ -61,10 +61,6 @@ class MusicCog(commands.Cog):
             while results["next"]:
                 results = self.spotify.next(results)
                 songs.extend(results["items"])
-            # Print the first 20 songs in the playlist
-            for i, item in enumerate(songs):
-                track = item["track"]
-                print("   %d %32.32s %s" % (i, track["artists"][0]["name"], track["name"]))
             return songs
         except Exception as e:
             print(e)
@@ -183,30 +179,28 @@ class MusicCog(commands.Cog):
                 # get the song list from spotify playlist
                 songs = self.get_songs_from_spotify(query)
                 playlist_detail = self.spotify.playlist(query)
-                # print(songs)
-                print(playlist_detail)
+
                 for i, song in enumerate(songs):
                     track = song["track"]
                     artist = track["artists"][0]["name"]
                     title = track["name"]
-                    # print("Track: ", track)
+
                     song_result = self.search_yt("%s %s audio" % (artist, title))
                     self.music_queue.append([song_result, voice_channel])
                     if i == 0 and not self.is_playing:
                         await self.play_music(ctx)
 
                 embed = discord.Embed(
-                    title="Playlist",
+                    title="Playlist - %s by %s" % (playlist_detail["name"], playlist_detail["owner"]["display_name"]),
                     url=query,
-                    description="Added a spotify playlist to queue",
+                    description="Added to queue",
                     color=discord.Color.green(),
                 )
-                # minutes, seconds = divmod(song["duration"], 60)
+
                 embed.set_footer(text="Playlist items: %d" % len(songs))
                 await ctx.send(embed=embed)
                 await self.queue(ctx)
-                # for items in self.music_queue:
-                #     print(items[0]["title"])
+
             else:
                 song = self.search_yt(query)
                 # print("Big song: ", song)
