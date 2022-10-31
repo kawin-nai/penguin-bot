@@ -9,7 +9,7 @@ from youtube_dl import YoutubeDL
 from spotipy import Spotify, SpotifyOAuth
 
 
-class MusicCog(commands.Cog):
+class MusicCogV2(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.spotify = Spotify(auth_manager=SpotifyOAuth(client_id=cred.client_id, client_secret=cred.client_secret,
@@ -72,8 +72,8 @@ class MusicCog(commands.Cog):
             self.is_playing = True
 
             # get the first url
-            song = self.music_queue[0][0]
-            m_url = self.music_queue[0][0]["source"]
+            song = self.search_yt(self.music_queue[0][0])
+            m_url = song["source"]
             self.cursong = song
             print("Cursong in play_next: ", self.cursong["title"])
             # remove the first element as you are currently playing it
@@ -107,8 +107,19 @@ class MusicCog(commands.Cog):
         if len(self.music_queue) > 0:
             self.is_playing = True
 
-            song = self.music_queue[0][0]
-            m_url = self.music_queue[0][0]["source"]
+            song = self.search_yt(self.music_queue[0][0])
+
+            # if type(song) == type(True):
+            #     print("Wrong song bro")
+            #     embed = discord.Embed(
+            #         title="Could not download the song",
+            #         description="Try a different keyword",
+            #         color=discord.Color.red(),
+            #     )
+            #     await ctx.send(embed=embed)
+            #     self.music_queue.pop(0)
+            m_url = song["source"]
+
             self.cursong = song
             print("Cursong in play_music: ", self.cursong["title"])
 
@@ -205,32 +216,18 @@ class MusicCog(commands.Cog):
                 await self.queue(ctx)
 
             else:
-                song = self.search_yt(query)
-                # print("Big song: ", song)
-                if type(song) == type(True):
-                    print("Wrong song bro")
-                    embed = discord.Embed(
-                        title="Could not download the song",
-                        description="Try a different keyword",
-                        color=discord.Color.red(),
-                    )
-                    await ctx.send(embed=embed)
+                # Get song url
+                print("Successfully enter the !p command")
 
-                else:
-                    # Get song url
-                    print("Successfully enter the !p command")
+                embed = discord.Embed(
+                    title="Query submitted",
+                    color=discord.Color.green()
+                )
+                # minutes, seconds = divmod(song["duration"], 60)
+                # embed.set_footer(text="Duration [%s]" % song["duration"])
+                await ctx.send(embed=embed)
 
-                    embed = discord.Embed(
-                        title=song["title"],
-                        url=song["weburl"],
-                        description="Added to queue",
-                        color=discord.Color.green(),
-                    )
-                    # minutes, seconds = divmod(song["duration"], 60)
-                    embed.set_footer(text="Duration [%s]" % song["duration"])
-                    await ctx.send(embed=embed)
-
-                    self.music_queue.append([song, voice_channel])
+                self.music_queue.append([query, voice_channel])
 
                 if not self.is_playing:
                     await self.play_music(ctx)
@@ -402,4 +399,4 @@ class MusicCog(commands.Cog):
 
 
 async def setup(bot):
-    await bot.add_cog(MusicCog(bot))
+    await bot.add_cog(MusicCogV2(bot))
