@@ -234,6 +234,9 @@ class MusicCogV2(commands.Cog):
 
     @commands.command(name="play_next", aliases=["pn"], help="Plays a selected song from youtube next in queue")
     async def play_next_in_queue(self, ctx, *args):
+        if self.vc is None or not self.vc.is_connected():
+            await ctx.send("Connect to a voice channel!")
+            return
         if self.is_paused:
             self.vc.resume()
         if len(self.music_queue) == 0:
@@ -287,24 +290,27 @@ class MusicCogV2(commands.Cog):
         name="switch_to", aliases=["sw"], help="Skip the current song and switch to a different song in the queue"
     )
     async def switch_to(self, ctx, *args):
-        if self.vc is not None and self.vc:
-            song_no = int(args[0])
-            if song_no > len(self.music_queue):
-                embed = discord.Embed(
-                    title="Song number is out of range",
-                    color=discord.Color.red(),
-                )
-                await ctx.send(embed=embed)
-                return
-            print("Switching song")
-            # Rearrange music queue
-            self.music_queue.insert(0, self.music_queue.pop(song_no - 1))
-            self.vc.stop()
+        if self.vc is None or not self.vc.is_connected():
+            await ctx.send("Connect to a voice channel!")
+            return
+
+        song_no = int(args[0])
+        if song_no > len(self.music_queue):
             embed = discord.Embed(
-                title="Switch to song #%d" % song_no,
-                color=discord.Color.blue(),
+                title="Song number is out of range",
+                color=discord.Color.red(),
             )
             await ctx.send(embed=embed)
+            return
+        print("Switching song")
+        # Rearrange music queue
+        self.music_queue.insert(0, self.music_queue.pop(song_no - 1))
+        self.vc.stop()
+        embed = discord.Embed(
+            title="Switch to song #%d" % song_no,
+            color=discord.Color.blue(),
+        )
+        await ctx.send(embed=embed)
 
     @commands.command(
         name="shuffle", aliases=["sh"], help="Shuffle the music queue"
@@ -355,11 +361,18 @@ class MusicCogV2(commands.Cog):
             # display a max of 6 songs in the current queue
             if i > 5:
                 break
-            embed.add_field(
-                name=str(i + 1) + ". " + self.music_queue[i][0][:-5],
-                value="Requested by: " + self.music_queue[i][2].name,
-                inline=False,
-            )
+            if self.music_queue[i][0].endswith("audio"):
+                embed.add_field(
+                    name=str(i + 1) + ". " + self.music_queue[i][0][:-5],
+                    value="Requested by: " + self.music_queue[i][2].name,
+                    inline=False,
+                )
+            else:
+                embed.add_field(
+                    name=str(i + 1) + ". " + self.music_queue[i][0],
+                    value="Requested by: " + self.music_queue[i][2].name,
+                    inline=False,
+                )
         if len(self.music_queue) > 6:
             embed.add_field(name="...", value="...", inline=False)
         embed.set_footer(text="Total songs in queue: %d" % len(self.music_queue))
@@ -377,24 +390,16 @@ class MusicCogV2(commands.Cog):
                 )
             )
             return
-        embed = discord.Embed(
-            title="Queue",
-            description="Current songs in queue",
-            color=discord.Color.green(),
-        )
-        embed.add_field(
-            name="Playing - " + self.cursong["title"],
-            value="Duration [%s]" % self.cursong["duration"],
-            inline=False,
-        )
-        for i in range(0, len(self.music_queue)):
-            embed.add_field(
-                name=str(i + 1) + ". " + self.music_queue[i][0][:-5],
-                value="Requested by: " + self.music_queue[i][2].name,
-                inline=False,
-            )
-        embed.set_footer(text="Total songs in queue: %d" % len(self.music_queue))
-        await ctx.send(embed=embed)
+
+        message = "Current songs in queue\n"
+        for i in range(0, min(20, len(self.music_queue))):
+            message += str(i + 1) + ". " + self.music_queue[i][0] + " (" + "Requested by:  " + self.music_queue[i][2].name+ "\n"
+        if len(self.music_queue) > 20:
+            message += "..."
+        message += "\nTotal songs in queue: %d" % len(self.music_queue)
+        await ctx.send(message)
+        # embed.set_footer(text="Total songs in queue: %d" % len(self.music_queue))
+        # await ctx.send(embed=embed)
 
     @commands.command(
         name="clear", aliases=["c", "bin"], help="Stops the music and clears the queue"
