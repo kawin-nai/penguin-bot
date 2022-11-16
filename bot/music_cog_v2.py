@@ -197,9 +197,9 @@ class MusicCogV2(commands.Cog):
                     track = song["track"]
                     artist = track["artists"][0]["name"]
                     title = track["name"]
-
-                    song_result = self.search_yt("%s %s audio" % (artist, title))
-                    self.music_queue.append([song_result, voice_channel])
+                    yt_query = "%s %s audio" % (artist, title)
+                    # song_result = self.search_yt("%s %s audio" % (artist, title))
+                    self.music_queue.append([yt_query, voice_channel, ctx.author])
                     # self.music_queue.append(["%s %s audio" % (artist, title), voice_channel])
                     if i == 0 and not self.is_playing:
                         await self.play_music(ctx)
@@ -227,10 +227,27 @@ class MusicCogV2(commands.Cog):
                 # embed.set_footer(text="Duration [%s]" % song["duration"])
                 await ctx.send(embed=embed)
 
-                self.music_queue.append([query, voice_channel])
+                self.music_queue.append([query, voice_channel, ctx.author])
 
                 if not self.is_playing:
                     await self.play_music(ctx)
+
+    @commands.command(name="play_next", aliases=["pn"], help="Plays a selected song from youtube next in queue")
+    async def play_next_in_queue(self, ctx, *args):
+        if self.is_paused:
+            self.vc.resume()
+        if len(self.music_queue) == 0:
+            await self.play(ctx, *args)
+            return
+        query = " ".join(args)
+        embed = discord.Embed(
+            title="Query submitted",
+            color=discord.Color.green()
+        )
+        await ctx.send(embed=embed)
+        voice_channel = ctx.author.voice.channel
+        self.music_queue.insert(0, [query, voice_channel, ctx.author])
+
 
     @commands.command(name="pause", help="Pauses the current song being played")
     async def pause(self, ctx):
@@ -339,8 +356,8 @@ class MusicCogV2(commands.Cog):
             if i > 5:
                 break
             embed.add_field(
-                name=str(i + 1) + ". " + self.music_queue[i][0]["title"],
-                value="Duration [%s]" % self.music_queue[i][0]["duration"],
+                name=str(i + 1) + ". " + self.music_queue[i][0][:-5],
+                value="Requested by: " + self.music_queue[i][2].name,
                 inline=False,
             )
         if len(self.music_queue) > 6:
@@ -372,8 +389,8 @@ class MusicCogV2(commands.Cog):
         )
         for i in range(0, len(self.music_queue)):
             embed.add_field(
-                name=str(i + 1) + ". " + self.music_queue[i][0]["title"],
-                value="Duration [%s]" % self.music_queue[i][0]["duration"],
+                name=str(i + 1) + ". " + self.music_queue[i][0][:-5],
+                value="Requested by: " + self.music_queue[i][2].name,
                 inline=False,
             )
         embed.set_footer(text="Total songs in queue: %d" % len(self.music_queue))
