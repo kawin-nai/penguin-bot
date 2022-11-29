@@ -1,3 +1,5 @@
+import logging
+
 import discord
 import datetime
 from discord.ext import commands
@@ -6,15 +8,14 @@ import cred
 import random
 
 from youtube_dl import YoutubeDL
-from spotipy import Spotify, SpotifyOAuth
+from spotipy import Spotify, SpotifyOAuth, SpotifyClientCredentials
 
 
 class MusicCogV2(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.spotify = Spotify(auth_manager=SpotifyOAuth(client_id=cred.client_id, client_secret=cred.client_secret,
-                                                         redirect_uri=cred.redirect_uri, scope=cred.scope))
-
+        # self.spotify = Spotify(auth_manager=SpotifyOAuth(client_id=cred.client_id, client_secret=cred.client_secret, redirect_uri=cred.redirect_uri))
+        self.spotify = Spotify(auth_manager=SpotifyClientCredentials(client_id=cred.client_id, client_secret=cred.client_secret))
         # all the music related stuff
         self.is_playing = False
         self.is_paused = False
@@ -29,6 +30,7 @@ class MusicCogV2(commands.Cog):
 
         self.vc = None
         self.cursong = None
+        logging.basicConfig(level=logging.DEBUG)
 
     # Search the song on youtube and return the url
     def search_yt(self, item):
@@ -57,11 +59,13 @@ class MusicCogV2(commands.Cog):
 
     def get_songs_from_spotify(self, playlist_id):
         try:
+            logging.info("Getting songs from spotify playlist")
             results = self.spotify.playlist_items(playlist_id)
             songs = results["items"]
             while results["next"]:
                 results = self.spotify.next(results)
                 songs.extend(results["items"])
+            logging.info("Got songs from spotify playlist")
             return songs
         except Exception as e:
             print(e)
@@ -137,16 +141,16 @@ class MusicCogV2(commands.Cog):
             # remove the first element as you are currently playing it
             self.music_queue.pop(0)
 
-            if song["raw_duration"] > 600:
-                error_embed = discord.Embed(
-                    title="Error: Song is too long",
-                    description="The song you requested is too long. Please request a song that is less than 20 minutes.",
-                    color=discord.Color.red(),
-                )
-                error_embed.set_footer(text="Duration [%s]" % song["duration"])
-                await ctx.send(embed=error_embed)
-                self.is_playing = False
-                return
+            # if song["raw_duration"] > 600:
+            #     error_embed = discord.Embed(
+            #         title="Error: Song is too long",
+            #         description="The song you requested is too long. Please request a song that is less than 20 minutes.",
+            #         color=discord.Color.red(),
+            #     )
+            #     error_embed.set_footer(text="Duration [%s]" % song["duration"])
+            #     await ctx.send(embed=error_embed)
+            #     self.is_playing = False
+            #     return
 
             print("In play_music, building embed")
             embed = discord.Embed(
@@ -187,7 +191,7 @@ class MusicCogV2(commands.Cog):
             self.vc.resume()
         else:
             if "spotify" in query:
-                print("Spotify")
+                print("Querying spotify playlist")
                 # get the song list from spotify playlist
                 songs = self.get_songs_from_spotify(query)
                 random.shuffle(songs)
@@ -203,7 +207,7 @@ class MusicCogV2(commands.Cog):
                     # self.music_queue.append(["%s %s audio" % (artist, title), voice_channel])
                     if i == 0 and not self.is_playing:
                         await self.play_music(ctx)
-
+                print("Finish querying spotify playlist")
                 embed = discord.Embed(
                     title="Playlist - %s by %s" % (playlist_detail["name"], playlist_detail["owner"]["display_name"]),
                     url=query,

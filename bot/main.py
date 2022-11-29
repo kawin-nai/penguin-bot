@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
-import os
 import asyncio
+import cred
 
 bot = commands.Bot(command_prefix="!", intents=discord.Intents.all(), help_command=None)
 
@@ -15,7 +15,7 @@ async def main():
     # await bot.load_extension("spotify_cog")
 
     # start the bot with our token
-    await bot.start(os.getenv("TOKEN"))
+    await bot.start(cred.token)
 
 
 if __name__ == "__main__":

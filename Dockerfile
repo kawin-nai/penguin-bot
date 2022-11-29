@@ -1,0 +1,18 @@
+FROM python:3.9
+
+WORKDIR /discord-bot
+
+COPY requirements.txt .
+
+RUN mkdir download
+
+RUN apt-get update
+
+RUN apt-get install -y ffmpeg
+
+RUN pip install -r requirements.txt
+
+COPY ./bot ./bot
+
+CMD ["python", "./bot/main.py"]
+
