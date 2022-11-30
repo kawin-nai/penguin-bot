@@ -15,7 +15,8 @@ class MusicCogV2(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         # self.spotify = Spotify(auth_manager=SpotifyOAuth(client_id=cred.client_id, client_secret=cred.client_secret, redirect_uri=cred.redirect_uri))
-        self.spotify = Spotify(auth_manager=SpotifyClientCredentials(client_id=cred.client_id, client_secret=cred.client_secret))
+        self.spotify = Spotify(
+            auth_manager=SpotifyClientCredentials(client_id=cred.client_id, client_secret=cred.client_secret))
         # all the music related stuff
         self.is_playing = False
         self.is_paused = False
@@ -31,6 +32,26 @@ class MusicCogV2(commands.Cog):
         self.vc = None
         self.cursong = None
         logging.basicConfig(level=logging.DEBUG)
+
+    # Check if the bot is inactive for more than 60 minutes and disconnect itself.
+    @commands.Cog.listener()
+    async def on_voice_state_update(self, member, before, after):
+        if not member.id == self.bot.user.id:
+            return
+        if after.channel is None:
+            return
+        voice = after.channel.guild.voice_client
+        time = 0
+        while True:
+            await asyncio.sleep(1)
+            time += 1
+            if not voice.is_connected():
+                break
+            if voice.is_playing():
+                time = 0
+            if time > 3600:
+                await voice.disconnect()
+                break
 
     # Search the song on youtube and return the url
     def search_yt(self, item):
@@ -255,7 +276,6 @@ class MusicCogV2(commands.Cog):
         voice_channel = ctx.author.voice.channel
         self.music_queue.insert(0, [query, voice_channel, ctx.author])
 
-
     @commands.command(name="pause", help="Pauses the current song being played")
     async def pause(self, ctx):
         if self.is_playing:
@@ -397,7 +417,8 @@ class MusicCogV2(commands.Cog):
 
         message = "Current songs in queue\n"
         for i in range(0, min(20, len(self.music_queue))):
-            message += str(i + 1) + ". " + self.music_queue[i][0] + " (" + "Requested by:  " + self.music_queue[i][2].name+ "\n"
+            message += str(i + 1) + ". " + self.music_queue[i][0] + " (" + "Requested by:  " + self.music_queue[i][
+                2].name + "\n"
         if len(self.music_queue) > 20:
             message += "..."
         message += "\nTotal songs in queue: %d" % len(self.music_queue)
