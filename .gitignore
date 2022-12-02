@@ -1,3 +1,5 @@
 token.txt
 .idea
 venv
+bot/music_cog.py
+bot/spotify_test.py
