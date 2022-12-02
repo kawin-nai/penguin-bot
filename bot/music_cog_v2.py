@@ -1,22 +1,22 @@
 import logging
+import os
+from asyncio import CancelledError
 
 import discord
 import datetime
 from discord.ext import commands
 import asyncio
-import cred
 import random
 
 from youtube_dl import YoutubeDL
-from spotipy import Spotify, SpotifyOAuth, SpotifyClientCredentials
+from spotipy import Spotify, SpotifyClientCredentials
 
 
 class MusicCogV2(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        # self.spotify = Spotify(auth_manager=SpotifyOAuth(client_id=cred.client_id, client_secret=cred.client_secret, redirect_uri=cred.redirect_uri))
         self.spotify = Spotify(
-            auth_manager=SpotifyClientCredentials(client_id=cred.client_id, client_secret=cred.client_secret))
+            auth_manager=SpotifyClientCredentials(client_id=os.getenv("SPOTIFY_ID"), client_secret=os.getenv("SPOTIFY_SECRET")))
         # all the music related stuff
         self.is_playing = False
         self.is_paused = False
@@ -117,7 +117,7 @@ class MusicCogV2(commands.Cog):
             fut = asyncio.run_coroutine_threadsafe(coro, self.bot.loop)
             try:
                 fut.result()
-            except:
+            except (TimeoutError, CancelledError):
                 pass
 
             self.vc.play(
