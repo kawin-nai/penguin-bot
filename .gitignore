@@ -3,3 +3,4 @@ token.txt
 venv
 bot/music_cog.py
 bot/spotify_test.py
+__pycache__
