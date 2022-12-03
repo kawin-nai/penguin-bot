@@ -191,7 +191,7 @@ class MusicCogV2(commands.Cog):
                 after=lambda e: self.play_next(ctx),
             )
         else:
-            self.cursong = None
+            # self.cursong = None
             self.is_playing = False
 
     @commands.command(
