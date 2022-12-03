@@ -4,6 +4,8 @@ WORKDIR /discord-bot
 
 COPY requirements.txt .
 
+RUN pip install --upgrade pip
+
 RUN mkdir download
 
 RUN apt-get update

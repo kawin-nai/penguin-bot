@@ -30,6 +30,11 @@ General commands:
             inline=False,
         )
         self.help_embed.add_field(
+            name="!pn [keyword]",
+            value="Finds the song on youtube and puts it next in queue.",
+            inline=False,
+        )
+        self.help_embed.add_field(
             name="!skip, !s",
             value="Skips the current song",
             inline=False,
@@ -60,7 +65,7 @@ General commands:
             inline=False,
         )
         self.help_embed.add_field(
-            name="!leave, !d",
+            name="!leave, !d, !l",
             value="Disconnects the bot from the voice channel",
             inline=False,
         )
