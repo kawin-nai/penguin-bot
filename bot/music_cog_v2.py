@@ -125,6 +125,7 @@ class MusicCogV2(commands.Cog):
                 after=lambda e: self.play_next(ctx),
             )
         else:
+            self.cursong = None
             self.is_playing = False
 
     # infinite loop checking
@@ -190,6 +191,7 @@ class MusicCogV2(commands.Cog):
                 after=lambda e: self.play_next(ctx),
             )
         else:
+            self.cursong = None
             self.is_playing = False
 
     @commands.command(
@@ -432,14 +434,17 @@ class MusicCogV2(commands.Cog):
         if self.vc is not None and self.is_playing:
             self.vc.stop()
         self.music_queue = []
+        self.is_playing = False
+        self.is_paused = False
+        self.cursong = None
         await ctx.send("Music queue cleared")
 
     @commands.command(
         name="leave", aliases=["disconnect", "l", "d"], help="Kick the bot from VC"
     )
     async def dc(self, ctx):
-        self.is_playing = False
-        self.is_paused = False
+        # self.is_playing = False
+        # self.is_paused = False
         await self.clear(ctx)
         await self.vc.disconnect()
 
