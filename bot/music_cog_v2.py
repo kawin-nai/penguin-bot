@@ -16,7 +16,7 @@ class MusicCogV2(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.spotify = Spotify(
-            auth_manager=SpotifyClientCredentials(client_id=os.getenv("SPOTIFY_ID"), client_secret=os.getenv("SPOTIFY_SECRET")))
+            client_credentials_manager=SpotifyClientCredentials(client_id=os.getenv("SPOTIFY_ID"), client_secret=os.getenv("SPOTIFY_SECRET")))
         # all the music related stuff
         self.is_playing = False
         self.is_paused = False
@@ -46,7 +46,7 @@ class MusicCogV2(commands.Cog):
             await asyncio.sleep(1)
             time += 1
             if not voice.is_connected():
-                break
+                time = 0
             if voice.is_playing():
                 time = 0
             if time > 3600:
@@ -135,7 +135,6 @@ class MusicCogV2(commands.Cog):
             song = self.search_yt(self.music_queue[0][0])
 
             # if type(song) == type(True):
-            #     print("Wrong song bro")
             #     embed = discord.Embed(
             #         title="Could not download the song",
             #         description="Try a different keyword",
