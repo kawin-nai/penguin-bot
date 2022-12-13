@@ -55,7 +55,10 @@ class DictionaryCog(commands.Cog):
             embed = discord.Embed(title=word.capitalize(), color=0x00ff00)
             for i in range(len(definitions)):
                 embed.add_field(name=part_of_speech[i], value=definitions[i].capitalize(), inline=False)
-                embed.add_field(name="Example", value=examples[i].capitalize(), inline=False)
+                try:
+                    embed.add_field(name="Example", value=examples[i].capitalize(), inline=False)
+                except:
+                    pass
             await ctx.send(embed=embed)
 
         else:
