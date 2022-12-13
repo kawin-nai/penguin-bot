@@ -79,6 +79,11 @@ General commands:
             value="Displays this message",
             inline=False,
         )
+        self.help_embed.add_field(
+            name="!define, !def [word]",
+            value="Displays the definition of the word",
+            inline=False,
+        )
         self.text_channel_list = []
 
     @commands.Cog.listener()
