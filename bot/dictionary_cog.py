@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 
 import discord
@@ -18,10 +19,11 @@ class DictionaryCog(commands.Cog):
         word = " ".join(args)
         url = "https://od-api.oxforddictionaries.com/api/v2/" + endpoint + "/" + language_code + "/" + word.lower()
         response = requests.get(url, headers={"app_id": os.getenv("OXFORD_APP_ID"), "app_key": os.getenv("OXFORD_APP_KEY")})
+        logging.info("Finding definitions")
         if response.status_code == 200:
             data = response.json()
             # pretty print data
-            print(json.dumps(data, indent=4, sort_keys=True))
+            # print(json.dumps(data, indent=4, sort_keys=True))
 
             # Get up to 3 definitions, part of speech, and example sentences
             definitions = []
@@ -31,7 +33,7 @@ class DictionaryCog(commands.Cog):
                         data["results"][0]["lexicalEntries"][i]["entries"][0]["senses"][0]["definitions"][0])
                 except:
                     break
-            print(definitions)
+            # print(definitions)
 
             part_of_speech = []
             for i in range(3):
@@ -39,7 +41,7 @@ class DictionaryCog(commands.Cog):
                     part_of_speech.append(data["results"][0]["lexicalEntries"][i]["lexicalCategory"]["text"])
                 except:
                     break
-            print(part_of_speech)
+            # print(part_of_speech)
 
             examples = []
             for i in range(3):
@@ -48,7 +50,7 @@ class DictionaryCog(commands.Cog):
                         data["results"][0]["lexicalEntries"][i]["entries"][0]["senses"][0]["examples"][0]["text"])
                 except:
                     break
-            print(examples)
+            # print(examples)
 
             embed = discord.Embed(title=word.capitalize(), color=0x00ff00)
             for i in range(len(definitions)):
