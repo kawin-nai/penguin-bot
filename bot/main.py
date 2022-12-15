@@ -13,6 +13,7 @@ async def main():
     await bot.load_extension("help_cog")
     await bot.load_extension("music_cog_v2")
     await bot.load_extension("dictionary_cog")
+    await bot.load_extension("translate_cog")
 
     # start the bot with our token
     await bot.start(os.getenv("BOT_TOKEN"))
