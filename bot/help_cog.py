@@ -84,6 +84,11 @@ General commands:
             value="Displays the definition of the word",
             inline=False,
         )
+        self.help_embed.add_field(
+            name="!translate, !tr [sentence]",
+            value="Translate the English sentence to Thai",
+            inline=False,
+        )
         self.text_channel_list = []
 
     @commands.Cog.listener()
