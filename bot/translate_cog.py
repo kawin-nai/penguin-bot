@@ -17,6 +17,15 @@ class TranslateCog(discord.ext.commands.Cog):
         except ValueError:
             await ctx.send("Error: Invalid translation")
 
+    @commands.command(name="thai", aliases=["th"])
+    async def translate(self, ctx, *args):
+        message = " ".join(args)
+        try:
+            result = self.translator.translate(message, dest="en")
+            await ctx.send(result.text)
+        except ValueError:
+            await ctx.send("Error: Invalid translation")
+
 
 async def setup(bot):
     await bot.add_cog(TranslateCog(bot))
