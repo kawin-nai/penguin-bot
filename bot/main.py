@@ -18,6 +18,8 @@ async def main():
     # start the bot with our token
     await bot.start(os.getenv("BOT_TOKEN"))
 
+    # TODO: Play a song from spotify link
+
 
 if __name__ == "__main__":
     asyncio.run(main())
