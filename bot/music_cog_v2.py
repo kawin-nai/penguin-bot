@@ -16,7 +16,8 @@ class MusicCogV2(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.spotify = Spotify(
-            client_credentials_manager=SpotifyClientCredentials(client_id=os.getenv("SPOTIFY_ID"), client_secret=os.getenv("SPOTIFY_SECRET")))
+            client_credentials_manager=SpotifyClientCredentials(client_id=os.getenv("SPOTIFY_ID"),
+                                                                client_secret=os.getenv("SPOTIFY_SECRET")))
         # all the music related stuff
         self.is_playing = False
         self.is_paused = False
@@ -62,7 +63,7 @@ class MusicCogV2(commands.Cog):
                     info = info["entries"][0]
                 # print("Info: ", info)
             except Exception as e:
-                print(e)
+                logging.exception(e)
                 return None
 
         duration = str(datetime.timedelta(seconds=info["duration"]))
@@ -85,7 +86,7 @@ class MusicCogV2(commands.Cog):
             logging.info("Got songs from spotify playlist")
             return songs
         except Exception as e:
-            print(e)
+            logging.exception(e)
             return None
 
     def play_next(self, ctx):
@@ -96,7 +97,7 @@ class MusicCogV2(commands.Cog):
             song = self.search_yt(self.music_queue[0][0])
             m_url = song["source"]
             self.cursong = song
-            print("Cursong in play_next: ", self.cursong["title"])
+            logging.info("Cursong in play_next: ", self.cursong["title"])
             # remove the first element as you are currently playing it
             self.music_queue.pop(0)
 
@@ -132,7 +133,7 @@ class MusicCogV2(commands.Cog):
             m_url = song["source"]
             self.cursong = song
 
-            print("Cursong in play_music: ", self.cursong["title"])
+            logging.info("Cursong in play_music: ", self.cursong["title"])
 
             # try to connect to voice channel if you are not already connected
             if self.vc is None or not self.vc.is_connected():
@@ -151,7 +152,8 @@ class MusicCogV2(commands.Cog):
             # if song["raw_duration"] > 600:
             #     error_embed = discord.Embed(
             #         title="Error: Song is too long",
-            #         description="The song you requested is too long. Please request a song that is less than 20 minutes.",
+            #         description='''The song you requested is too long. Please request a song that is less than 20
+            #         minutes.''',
             #         color=discord.Color.red(),
             #     )
             #     error_embed.set_footer(text="Duration [%s]" % song["duration"])
@@ -159,7 +161,7 @@ class MusicCogV2(commands.Cog):
             #     self.is_playing = False
             #     return
 
-            print("In play_music, building embed")
+            logging.info("In play_music, building embed")
             embed = discord.Embed(
                 title="Now Playing",
                 url=song["weburl"],
@@ -170,7 +172,7 @@ class MusicCogV2(commands.Cog):
             # minutes, seconds = divmod(song["duration"], 60)
             embed.set_footer(text="Duration [%s]" % song["duration"])
             await ctx.send(embed=embed)
-            print("In play_music, embed sent")
+            logging.info("In play_music, embed sent")
 
             self.vc.play(
                 discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(m_url, **self.FFMPEG_OPTIONS), 0.7),
@@ -185,23 +187,23 @@ class MusicCogV2(commands.Cog):
     )
     async def play(self, ctx, *args):
         query = " ".join(args)
-        print("Searching for: %s" % query)
-        # print("Message: ", ctx.author, ctx.author.status, ctx.author.voice.channel)
+        logging.info("Searching for: %s" % query)
+        # logging.info("Message: ", ctx.author, ctx.author.status, ctx.author.voice.channel)
         voice_channel = ctx.author.voice.channel
-        # print("No voice", voice_channel)
+        # logging.info("No voice", voice_channel)
         if voice_channel is None:
             # you need to be connected so that the bot knows where to go
-            print("No voice")
+            logging.info("No voice")
             await ctx.send("Connect to a voice channel!")
             return
         elif self.is_paused:
-            print("Resume")
+            logging.info("Resume")
             self.vc.resume()
         else:
             # check if query is a URL
             if "http" in query:
                 if "playlist" in query:
-                    print("Querying spotify playlist")
+                    logging.info("Querying spotify playlist")
                     # get the song list from spotify playlist
                     songs = self.get_songs_from_spotify(query)
                     random.shuffle(songs)
@@ -215,9 +217,10 @@ class MusicCogV2(commands.Cog):
                         self.music_queue.append([yt_query, voice_channel, ctx.author])
                         if i == 0 and not self.is_playing:
                             await self.play_music(ctx)
-                    print("Finish querying spotify playlist")
+                    logging.info("Finish querying spotify playlist")
                     embed = discord.Embed(
-                        title="Playlist - %s by %s" % (playlist_detail["name"], playlist_detail["owner"]["display_name"]),
+                        title="Playlist - %s by %s" % (playlist_detail["name"],
+                                                       playlist_detail["owner"]["display_name"]),
                         url=query,
                         description="Added to queue",
                         color=discord.Color.green(),
@@ -228,15 +231,13 @@ class MusicCogV2(commands.Cog):
                     await self.queue(ctx)
 
                 elif "track" in query:
-                    print("Querying spotify track")
+                    logging.info("Querying spotify track")
                     track = self.spotify.track(query)
+                    logging.info("Finish querying spotify track")
                     artist = track["artists"][0]["name"]
                     title = track["name"]
                     yt_query = "%s %s audio" % (artist, title)
                     self.music_queue.append([yt_query, voice_channel, ctx.author])
-                    if not self.is_playing:
-                        await self.play_music(ctx)
-                    print("Finish querying spotify track")
                     embed = discord.Embed(
                         title="Track - %s by %s" % (title, artist),
                         url=query,
@@ -244,11 +245,11 @@ class MusicCogV2(commands.Cog):
                         color=discord.Color.green(),
                     )
                     await ctx.send(embed=embed)
-                    await self.queue(ctx)
-
+                    if not self.is_playing:
+                        await self.play_music(ctx)
             else:
                 # Get song url
-                print("Successfully enter the !p command")
+                logging.info("Successfully enter the !p command")
 
                 embed = discord.Embed(
                     title="Query submitted",
@@ -305,8 +306,8 @@ class MusicCogV2(commands.Cog):
     )
     async def skip(self, ctx):
         if self.vc is not None and self.vc:
-            print("Skipping song")
-            print("Cursong in skip: ", self.cursong["title"])
+            logging.info("Skipping song")
+            logging.info("Cursong in skip: ", self.cursong["title"])
             self.vc.stop()
             embed = discord.Embed(
                 title="Skipped",
@@ -330,7 +331,7 @@ class MusicCogV2(commands.Cog):
             )
             await ctx.send(embed=embed)
             return
-        print("Switching song")
+        logging.info("Switching song")
         # Rearrange music queue
         self.music_queue.insert(0, self.music_queue.pop(song_no - 1))
         self.vc.stop()
@@ -352,7 +353,7 @@ class MusicCogV2(commands.Cog):
                 )
                 await ctx.send(embed=embed)
                 return
-            print("Shuffling song")
+            logging.info("Shuffling song")
             # Shuffle music queue
             random.shuffle(self.music_queue)
 

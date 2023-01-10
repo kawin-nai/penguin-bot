@@ -1,24 +1,11 @@
 import discord
 from discord.ext import commands
+import logging
 
 
 class HelpCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-
-        self.help_message = """
-```
-General commands:
-!help - Displays all available commands
-!p <keywords> - finds the song on youtube and plays it in your current channel. Will resume playing the current song if it was paused
-!q - displays the current music queue
-!skip - skips the current song being played
-!clear - Stops the music and clears the queue
-!leave - Disconnected the bot from the voice channel
-!pause - pauses the current song being played or resumes if already paused
-!resume - resumes playing the current song
-```
-"""
         self.help_embed = discord.Embed(
             title="Commands",
             description="Please make sure you're connected to a voice channel before typing!",
@@ -96,30 +83,30 @@ General commands:
         for guild in self.bot.guilds:
             for channel in guild.text_channels:
                 self.text_channel_list.append(channel)
-        print("Bot is ready")
-        # print(self.text_channel_list)
+        logging.info("Bot is ready")
+        # logging.info(self.text_channel_list)
         # await self.help_to_all()
 
     @commands.command(name="help", help="Displays all available commands")
     async def help(self, ctx):
-        print("Sending help message")
+        logging.info("Sending help message")
         await ctx.send(embed=self.help_embed)
 
     async def help_to_all(self):
-        print("Sending help message to all general channels")
+        logging.info("Sending help message to all general channels")
         for channel in self.text_channel_list:
             if channel.name == "general":
                 await channel.send(embed=self.help_embed)
 
     @commands.command(name="test", help="Test command")
     async def test(self, ctx):
-        print("Sending test message")
+        logging.info("Sending test message")
         await ctx.send("Test message")
 
     @commands.command(name="send_message", aliases=["m"], help="Messages to all channels")
     async def send_message(self, ctx, *args):
         message = " ".join(args)
-        # print(message)
+        # logging.info(message)
         for channel in self.text_channel_list:
             if channel.name == "general":
                 await channel.send(message)
