@@ -133,7 +133,7 @@ class MusicCogV2(commands.Cog):
             m_url = song["source"]
             self.cursong = song
 
-            logging.info("Cursong in play_music: ", self.cursong["title"])
+            logging.info("Cursong in play_music: ", song["title"])
 
             # try to connect to voice channel if you are not already connected
             if self.vc is None or not self.vc.is_connected():
@@ -200,8 +200,8 @@ class MusicCogV2(commands.Cog):
             logging.info("Resume")
             self.vc.resume()
         else:
-            # check if query is a URL
-            if "http" in query:
+            # check if query is a spotify URL
+            if "open.spotify.com" in query:
                 if "playlist" in query:
                     logging.info("Querying spotify playlist")
                     # get the song list from spotify playlist
