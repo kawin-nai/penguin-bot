@@ -8,7 +8,7 @@ from discord.ext import commands
 import asyncio
 import random
 
-from youtube_dl import YoutubeDL
+from yt_dlp import YoutubeDL
 from spotipy import Spotify, SpotifyClientCredentials
 
 
