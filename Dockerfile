@@ -14,6 +14,8 @@ RUN apt-get install -y ffmpeg
 
 RUN pip install -r requirements.txt
 
+RUN pip install yt-dlp -U
+
 COPY ./bot ./bot
 
 CMD ["python", "./bot/main.py"]
