@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 from asyncio import CancelledError
@@ -67,8 +68,10 @@ class MusicCogV2(commands.Cog):
                 return None
 
         duration = str(datetime.timedelta(seconds=info["duration"]))
+        # print(json.dumps(ydl.sanitize_info(info), indent=2))
+
         return {
-            "source": info["formats"][0]["url"],
+            "source": info["url"],
             "title": info["title"],
             "weburl": info["webpage_url"],
             "duration": duration,
@@ -97,7 +100,7 @@ class MusicCogV2(commands.Cog):
             song = self.search_yt(self.music_queue[0][0])
             m_url = song["source"]
             self.cursong = song
-            logging.info("Cursong in play_next: ", self.cursong["title"])
+            logging.info("Cursong in play_next: " + self.cursong["title"])
             # remove the first element as you are currently playing it
             self.music_queue.pop(0)
 
@@ -132,8 +135,9 @@ class MusicCogV2(commands.Cog):
             song = self.search_yt(self.music_queue[0][0])
             m_url = song["source"]
             self.cursong = song
+            logging.debug(song)
 
-            logging.info("Cursong in play_music: ", song["title"])
+            logging.info("Cursong in play_music: " + song["title"])
 
             # try to connect to voice channel if you are not already connected
             if self.vc is None or not self.vc.is_connected():
@@ -307,7 +311,7 @@ class MusicCogV2(commands.Cog):
     async def skip(self, ctx):
         if self.vc is not None and self.vc:
             logging.info("Skipping song")
-            logging.info("Cursong in skip: ", self.cursong["title"])
+            logging.info("Cursong in skip: " + self.cursong["title"])
             self.vc.stop()
             embed = discord.Embed(
                 title="Skipped",
