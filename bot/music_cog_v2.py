@@ -36,24 +36,24 @@ class MusicCogV2(commands.Cog):
         logging.basicConfig(level=logging.DEBUG)
 
     # Check if the bot is inactive for more than 60 minutes and disconnect itself.
-    @commands.Cog.listener()
-    async def on_voice_state_update(self, member, before, after):
-        if not member.id == self.bot.user.id:
-            return
-        if after.channel is None:
-            return
-        voice = after.channel.guild.voice_client
-        time = 0
-        while True:
-            await asyncio.sleep(1)
-            time += 1
-            if not voice.is_connected():
-                time = 0
-            if voice.is_playing():
-                time = 0
-            if time > 3600:
-                await voice.disconnect()
-                break
+    # @commands.Cog.listener()
+    # async def on_voice_state_update(self, member, before, after):
+    #     if not member.id == self.bot.user.id:
+    #         return
+    #     if after.channel is None:
+    #         return
+    #     voice = after.channel.guild.voice_client
+    #     time = 0
+    #     while True:
+    #         await asyncio.sleep(1)
+    #         time += 1
+    #         if not voice.is_connected():
+    #             time = 0
+    #         if voice.is_playing():
+    #             time = 0
+    #         if time > 3600:
+    #             await voice.disconnect()
+    #             break
 
     # Search the song on youtube and return the url
     def search_yt(self, item):
